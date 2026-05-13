@@ -57,7 +57,7 @@ npm install ipfs-car carbites filecoin-pin
 ```
 
 **4. Configure the Application:**
-Open `server_1.mjs` in your code editor and update the configuration variables at the top of the file:
+Open `server.mjs` in your code editor and update the configuration variables at the top of the file:
 
 ```javascript
 // Configure your Filecoin wallet & Dataset
