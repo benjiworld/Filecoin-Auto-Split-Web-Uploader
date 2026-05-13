@@ -103,7 +103,7 @@ app.get('/', (req, res) => {
                 <!-- UPLOAD CARD -->
                 <div class="card">
                     <h2>Upload to Filecoin (v4)</h2>
-                    <p style="font-size: 14px; color: #666;">Upload a file or folder. It will be packed, split, and pinned to Dataset ${DATASET_ID}.</p>
+                    <p style="font-size: 14px; color: #666;">Upload a file or folder. It will be packed, split (optimized for padding), and pinned to Dataset ${DATASET_ID}.</p>
                     
                     <div class="radio-group">
                         <label><input type="radio" name="uploadType" value="file" checked onchange="toggleMode('file')"> Single File</label>
@@ -241,7 +241,7 @@ app.get('/', (req, res) => {
                     });
 
                     source.addEventListener('splitting', (e) => {
-                        if(e.data === 'start') setIndeterminate('splitting', 'Processing...');
+                        if(e.data === 'start') setIndeterminate('splitting', 'Calculating optimal sizes...');
                         if(e.data === 'skipped') finishIndeterminate('splitting', 'Skipped (< 1GB)', '#6c757d');
                         if(e.data === 'done') finishIndeterminate('splitting');
                     });
@@ -501,7 +501,6 @@ app.get('/api/history', async (req, res) => {
 
         res.json({
             datasetId: DATASET_ID,
-            // Reverse the array so the newest uploads show at the top of the table!
             pieces: pieces.reverse() 
         });
 
@@ -550,7 +549,7 @@ app.get('/status/:jobId', (req, res) => {
     if (job) job.res = res;
 });
 
-// --- 5. THE PIPELINE RUNNER ---
+// --- 5. THE PIPELINE RUNNER (WITH FILECOIN PADDING OPTIMIZATION) ---
 async function runPipeline(jobId, pathToPack, rootTargetName, tempJobFolder) {
     const sendEvent = (event, data) => {
         const job = activeJobs.get(jobId);
@@ -574,12 +573,43 @@ async function runPipeline(jobId, pathToPack, rootTargetName, tempJobFolder) {
         const carFileSize = fs.statSync(carFilePath).size;
         let filesToUpload = [];
 
+        // Dynamic Filecoin Padding Optimization Algorithm
+        let optimalChunkSize = MAX_CAR_SIZE; // Default max is 1 GiB
+        
         if (carFileSize <= MAX_CAR_SIZE) {
             sendEvent('splitting', 'skipped');
             filesToUpload.push(`${rootTargetName}.car`);
         } else {
             sendEvent('splitting', 'start');
-            await execPromise(`npx carbites split "${carFilePath}" -s ${MAX_CAR_SIZE} -t treewalk`, { cwd: tempJobFolder });
+            
+            // We want pieces between 32MiB and 1GiB
+            const minBoundary = 32 * 1024 * 1024; 
+            let bestBoundary = MAX_CAR_SIZE;
+            let lowestWaste = Infinity;
+
+            for (let boundary = MAX_CAR_SIZE; boundary >= minBoundary; boundary /= 2) {
+                const chunksNeeded = Math.ceil(carFileSize / boundary);
+                const finalChunkSize = carFileSize % boundary || boundary;
+                
+                // Network pads the final chunk to the NEXT power of 2
+                let finalChunkPaddedSize = minBoundary;
+                while (finalChunkPaddedSize < finalChunkSize) {
+                    finalChunkPaddedSize *= 2;
+                }
+                
+                const wastedPadding = finalChunkPaddedSize - finalChunkSize;
+
+                if (wastedPadding < lowestWaste) {
+                    lowestWaste = wastedPadding;
+                    bestBoundary = boundary;
+                }
+            }
+
+            optimalChunkSize = bestBoundary;
+            console.log(`[Job ${jobId}] File Size: ${carFileSize} bytes. Optimal Chunk Size: ${optimalChunkSize} bytes.`);
+
+            // Pass the calculated optimal byte size directly to carbites
+            await execPromise(`npx carbites split "${carFilePath}" --size ${optimalChunkSize} --strategy treewalk`, { cwd: tempJobFolder });
             sendEvent('splitting', 'done');
 
             filesToUpload = fs.readdirSync(tempJobFolder)
