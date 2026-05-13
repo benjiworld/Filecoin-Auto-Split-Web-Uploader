@@ -35,7 +35,7 @@ Before running this application, ensure you have the following installed:
 
 **1. Clone the repository and navigate into the directory:**
 ```bash
-git clone https://github.com/your-username/filecoin-smart-uploader.git
+git clone https://github.com/benjiworld/filecoin-smart-uploader.git
 cd filecoin-smart-uploader
 ```
 
