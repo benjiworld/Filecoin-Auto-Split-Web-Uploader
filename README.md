@@ -72,7 +72,7 @@ const RPC_URL = 'https://api.node.glif.io/rpc/v1'; // Default GLIF node
 
 Start the server:
 ```bash
-node server_1.mjs
+node server.mjs
 ```
 
 Open your web browser and navigate to:
