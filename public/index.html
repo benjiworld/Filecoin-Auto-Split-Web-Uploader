@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Filecoin Auto-Split Uploader</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f4f7f6; padding: 2rem; }
+    .container { max-width: 1400px; margin: auto; }
+    .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px #0002; margin-bottom: 20px; }
+    .hidden { display: none; }
+    .button-stack { display: grid; gap: 10px; margin: 15px 0; }
+    button { border: 0; border-radius: 6px; padding: 12px 20px; cursor: pointer; color: white; font-size: 16px; }
+    button:disabled { background: #aaa !important; cursor: not-allowed; }
+    .green { background: #28a745; }
+    .blue { background: #0090ff; }
+    .cyan { background: #17a2b8; }
+    .red { background: #dc3545; }
+    .gray { background: #6c757d; }
+    .step { margin: 15px 0; }
+    .label { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; }
+    .track { background: #e0e0e0; height: 12px; border-radius: 6px; overflow: hidden; }
+    .bar { background: #0090ff; height: 100%; width: 0; transition: width .2s; }
+    .indeterminate { width: 100%; background: repeating-linear-gradient(45deg,#0090ff,#0090ff 10px,#4facfe 10px,#4facfe 20px); background-size: 200% 200%; animation: stripes 2s linear infinite; }
+    @keyframes stripes { to { background-position: -100% 0; } }
+    .error { background: #f8d7da; color: #721c24; padding: 12px; margin-top: 15px; white-space: pre-wrap; }
+    .success { background: #e8f5e9; border-left: 4px solid #28a745; padding: 10px; margin-top: 10px; }
+    .terminal { background: #212529; color: white; padding: 15px; white-space: pre-wrap; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background: #f8f9fa; }
+    .cid { font-family: monospace; word-break: break-all; }
+    .cid-line { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+    .copy { color: #495057; background: #e9ecef; border: 1px solid #ced4da; padding: 4px 8px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h2>Upload to Filecoin</h2>
+      <p>Upload a file or folder. It is packed into a CAR, split when needed, and imported into Dataset <span id="datasetLabel">…</span>.</p>
+      <label><input type="radio" name="mode" value="file" checked> Single File</label>
+      <label><input type="radio" name="mode" value="folder"> Folder / Directory</label>
+      <input id="fileInput" type="file" style="display:block;width:100%;margin:15px 0;padding:10px">
+      <div class="button-stack">
+        <button id="uploadBtn" class="green" type="button">1. Process and Upload</button>
+        <button id="historyBtn" class="blue" type="button">2. View Upload History</button>
+        <button id="paymentsBtn" class="cyan" type="button">3. Check Payments Status</button>
+      </div>
+      <div id="progress" class="hidden">
+        <div class="step"><div class="label"><span>1. Uploading to Server</span><span id="uploadText">0%</span></div><div class="track"><div id="uploadBar" class="bar"></div></div></div>
+        <div class="step"><div class="label"><span>2. Packing to CAR</span><span id="packingText">Waiting...</span></div><div class="track"><div id="packingBar" class="bar"></div></div></div>
+        <div class="step"><div class="label"><span>3. Splitting CAR</span><span id="splittingText">Waiting...</span></div><div class="track"><div id="splittingBar" class="bar"></div></div></div>
+        <div id="results"></div>
+        <div id="chunks"></div>
+      </div>
+    </section>
+    <section id="paymentsCard" class="card hidden"><h2>Payments Status</h2><div id="paymentsContent" class="terminal"></div></section>
+    <section id="historyCard" class="card hidden"><h2>Upload History (Dataset <span class="dataset-label">…</span>)</h2><div id="historyContent"></div></section>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
